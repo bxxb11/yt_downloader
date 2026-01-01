@@ -359,6 +359,14 @@
                 </select>
             </div>
 
+            <div class="input-group">
+                <label for="downloadDir">下载目录（可选，留空使用默认目录）</label>
+                <input type="text" id="downloadDir" placeholder="例如: D:\Videos 或 /home/user/videos" />
+                <small style="display: block; margin-top: 5px; color: #999; font-size: 12px;">
+                    留空则下载到默认的 downloads/ 目录
+                </small>
+            </div>
+
             <button class="btn" id="getInfoBtn">获取视频信息</button>
             <button class="btn" id="downloadBtn" style="display: none;">开始下载</button>
 
@@ -440,6 +448,7 @@
         document.getElementById('downloadBtn').addEventListener('click', async () => {
             const url = document.getElementById('url').value.trim();
             const quality = document.getElementById('quality').value;
+            const downloadDir = document.getElementById('downloadDir').value.trim();
 
             if (!url) {
                 showMessage('请输入YouTube视频链接', 'error');
@@ -451,12 +460,17 @@
             btn.innerHTML = '<span class="loading"></span>开始下载...';
 
             try {
+                const requestBody = { url, quality };
+                if (downloadDir) {
+                    requestBody.download_dir = downloadDir;
+                }
+
                 const response = await fetch('/api/download', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ url, quality })
+                    body: JSON.stringify(requestBody)
                 });
 
                 const data = await response.json();
@@ -541,18 +555,23 @@
                     if (data.files.length === 0) {
                         fileList.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">暂无下载文件</p>';
                     } else {
-                        fileList.innerHTML = data.files.map(file => `
+                        fileList.innerHTML = data.files.map(file => {
+                            const fileDir = file.dir || '';
+                            const dirDisplay = fileDir ? `<div style="font-size: 11px; color: #999; margin-top: 3px;">${escapeHtml(fileDir)}</div>` : '';
+                            return `
                             <div class="file-item">
                                 <div class="file-info">
                                     <div class="file-name">${escapeHtml(file.name)}</div>
                                     <div class="file-meta">${file.size_mb} MB | ${file.modified}</div>
+                                    ${dirDisplay}
                                 </div>
                                 <div class="file-actions">
-                                    <button class="btn-small btn-download" onclick="downloadFile('${file.name}')">下载</button>
-                                    <button class="btn-small btn-delete" onclick="deleteFile('${file.name}')">删除</button>
+                                    <button class="btn-small btn-download" onclick="downloadFile('${escapeHtml(file.name)}', '${escapeHtml(fileDir)}')">下载</button>
+                                    <button class="btn-small btn-delete" onclick="deleteFile('${escapeHtml(file.name)}', '${escapeHtml(fileDir)}')">删除</button>
                                 </div>
                             </div>
-                        `).join('');
+                        `;
+                        }).join('');
                     }
                 }
             } catch (error) {
@@ -561,18 +580,26 @@
         }
 
         // 下载文件
-        function downloadFile(filename) {
-            window.open(`/api/download/${encodeURIComponent(filename)}`, '_blank');
+        function downloadFile(filename, fileDir) {
+            let url = `/api/download/${encodeURIComponent(filename)}`;
+            if (fileDir) {
+                url += `?dir=${encodeURIComponent(fileDir)}`;
+            }
+            window.open(url, '_blank');
         }
 
         // 删除文件
-        async function deleteFile(filename) {
+        async function deleteFile(filename, fileDir) {
             if (!confirm('确定要删除这个文件吗？')) {
                 return;
             }
 
             try {
-                const response = await fetch(`/api/delete/${encodeURIComponent(filename)}`, {
+                let url = `/api/delete/${encodeURIComponent(filename)}`;
+                if (fileDir) {
+                    url += `?dir=${encodeURIComponent(fileDir)}`;
+                }
+                const response = await fetch(url, {
                     method: 'DELETE'
                 });
 

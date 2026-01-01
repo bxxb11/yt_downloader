@@ -2,9 +2,11 @@
 
 一个简单易用的YouTube视频下载工具，使用Python和yt-dlp实现。
 
+**本地网页应用** - 在您的电脑上运行，通过浏览器访问和下载视频。
+
 ## 🌐 Web应用版本（推荐）
 
-**现在支持网页界面！** 无需命令行，通过浏览器即可使用。
+**本地网页界面！** 无需命令行，通过浏览器即可使用。
 
 👉 [查看Web应用使用说明](WEB_APP_README.md)
 
@@ -14,13 +16,16 @@
 start_server.bat
 
 # macOS/Linux  
+chmod +x start_server.sh
 ./start_server.sh
 
 # 或直接运行
 python app.py
 ```
 
-然后访问: http://localhost:5000
+然后访问: **http://localhost:5000**
+
+**注意**: 这是本地应用，只在您的电脑上运行，不会部署到云端。
 
 ---
 

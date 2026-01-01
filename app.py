@@ -59,9 +59,14 @@ def get_video_info(url):
         }
 
 
-def download_video_task(task_id, url, quality="best"):
+def download_video_task(task_id, url, quality="best", download_dir=None):
     """后台下载任务"""
-    output_path = DOWNLOAD_DIR
+    # 使用自定义目录或默认目录
+    if download_dir:
+        output_path = Path(download_dir)
+    else:
+        output_path = DOWNLOAD_DIR
+    output_path.mkdir(parents=True, exist_ok=True)
     has_ffmpeg = False
     try:
         import shutil
@@ -120,6 +125,7 @@ def download_video_task(task_id, url, quality="best"):
             download_tasks[task_id]['progress'] = 100
             download_tasks[task_id]['filename'] = actual_file.name
             download_tasks[task_id]['filepath'] = str(actual_file)
+            download_tasks[task_id]['download_dir'] = str(output_path)
             
     except Exception as e:
         download_tasks[task_id]['status'] = 'error'
@@ -164,9 +170,23 @@ def start_download():
     data = request.json
     url = data.get('url', '')
     quality = data.get('quality', 'best')
+    download_dir = data.get('download_dir', '').strip()
     
     if not url:
         return jsonify({'success': False, 'error': 'URL不能为空'})
+    
+    # 验证下载目录
+    if download_dir:
+        try:
+            download_path = Path(download_dir)
+            # 检查是否为有效路径
+            if not download_path.is_absolute() and not download_path.exists():
+                # 相对路径，检查父目录是否存在
+                parent = download_path.parent
+                if parent and not parent.exists():
+                    return jsonify({'success': False, 'error': f'下载目录无效: {download_dir}'})
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'下载目录错误: {str(e)}'})
     
     # 生成任务ID
     task_id = f"task_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
@@ -176,6 +196,7 @@ def start_download():
         'task_id': task_id,
         'url': url,
         'quality': quality,
+        'download_dir': download_dir if download_dir else str(DOWNLOAD_DIR),
         'status': 'pending',
         'progress': 0,
         'filename': None,
@@ -184,7 +205,7 @@ def start_download():
     }
     
     # 在后台线程中开始下载
-    thread = threading.Thread(target=download_video_task, args=(task_id, url, quality))
+    thread = threading.Thread(target=download_video_task, args=(task_id, url, quality, download_dir if download_dir else None))
     thread.daemon = True
     thread.start()
     
@@ -218,16 +239,52 @@ def get_status(task_id):
 @app.route('/api/downloads')
 def list_downloads():
     """列出所有已下载的文件"""
+    # 获取查询参数中的目录（可选）
+    download_dir = request.args.get('dir', '').strip()
+    
+    # 确定要扫描的目录列表
+    dirs_to_scan = []
+    if download_dir:
+        try:
+            dirs_to_scan.append(Path(download_dir))
+        except:
+            pass
+    else:
+        # 默认目录 + 所有任务中使用的目录
+        dirs_to_scan.append(DOWNLOAD_DIR)
+        for task in download_tasks.values():
+            if task.get('download_dir'):
+                try:
+                    task_dir = Path(task['download_dir'])
+                    if task_dir.exists() and task_dir not in dirs_to_scan:
+                        dirs_to_scan.append(task_dir)
+                except:
+                    pass
+    
     files = []
-    for file_path in DOWNLOAD_DIR.glob('*'):
-        if file_path.is_file() and file_path.suffix in ['.mp4', '.webm', '.mkv']:
-            stat = file_path.stat()
-            files.append({
-                'name': file_path.name,
-                'size': stat.st_size,
-                'size_mb': round(stat.st_size / (1024 * 1024), 2),
-                'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
-            })
+    scanned_dirs = set()
+    
+    for scan_dir in dirs_to_scan:
+        if not scan_dir.exists():
+            continue
+        
+        # 避免重复扫描
+        scan_dir_str = str(scan_dir.resolve())
+        if scan_dir_str in scanned_dirs:
+            continue
+        scanned_dirs.add(scan_dir_str)
+        
+        for file_path in scan_dir.glob('*'):
+            if file_path.is_file() and file_path.suffix in ['.mp4', '.webm', '.mkv']:
+                stat = file_path.stat()
+                files.append({
+                    'name': file_path.name,
+                    'path': str(file_path),
+                    'dir': str(scan_dir),
+                    'size': stat.st_size,
+                    'size_mb': round(stat.st_size / (1024 * 1024), 2),
+                    'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                })
     
     # 按修改时间排序（最新的在前）
     files.sort(key=lambda x: x['modified'], reverse=True)
@@ -241,7 +298,39 @@ def list_downloads():
 @app.route('/api/download/<filename>')
 def download_file(filename):
     """下载文件"""
-    file_path = DOWNLOAD_DIR / filename
+    # 获取查询参数中的目录（可选）
+    download_dir = request.args.get('dir', '').strip()
+    
+    # 确定文件路径
+    if download_dir:
+        try:
+            file_path = Path(download_dir) / filename
+        except:
+            file_path = DOWNLOAD_DIR / filename
+    else:
+        # 尝试在默认目录和所有任务目录中查找
+        file_path = None
+        search_dirs = [DOWNLOAD_DIR]
+        
+        # 添加所有任务中使用的目录
+        for task in download_tasks.values():
+            if task.get('download_dir'):
+                try:
+                    task_dir = Path(task['download_dir'])
+                    if task_dir.exists() and task_dir not in search_dirs:
+                        search_dirs.append(task_dir)
+                except:
+                    pass
+        
+        # 在所有目录中搜索文件
+        for search_dir in search_dirs:
+            test_path = search_dir / filename
+            if test_path.exists():
+                file_path = test_path
+                break
+        
+        if not file_path:
+            file_path = DOWNLOAD_DIR / filename
     
     if not file_path.exists():
         return jsonify({'success': False, 'error': '文件不存在'}), 404
@@ -256,7 +345,39 @@ def download_file(filename):
 @app.route('/api/delete/<filename>', methods=['DELETE'])
 def delete_file(filename):
     """删除文件"""
-    file_path = DOWNLOAD_DIR / filename
+    # 获取查询参数中的目录（可选）
+    download_dir = request.args.get('dir', '').strip()
+    
+    # 确定文件路径
+    if download_dir:
+        try:
+            file_path = Path(download_dir) / filename
+        except:
+            file_path = DOWNLOAD_DIR / filename
+    else:
+        # 尝试在默认目录和所有任务目录中查找
+        file_path = None
+        search_dirs = [DOWNLOAD_DIR]
+        
+        # 添加所有任务中使用的目录
+        for task in download_tasks.values():
+            if task.get('download_dir'):
+                try:
+                    task_dir = Path(task['download_dir'])
+                    if task_dir.exists() and task_dir not in search_dirs:
+                        search_dirs.append(task_dir)
+                except:
+                    pass
+        
+        # 在所有目录中搜索文件
+        for search_dir in search_dirs:
+            test_path = search_dir / filename
+            if test_path.exists():
+                file_path = test_path
+                break
+        
+        if not file_path:
+            file_path = DOWNLOAD_DIR / filename
     
     if not file_path.exists():
         return jsonify({'success': False, 'error': '文件不存在'}), 404
@@ -270,10 +391,12 @@ def delete_file(filename):
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("YouTube视频下载Web应用")
+    print("YouTube视频下载Web应用 - 本地版本")
     print("=" * 60)
     print(f"访问地址: http://localhost:5000")
     print(f"下载目录: {DOWNLOAD_DIR.absolute()}")
     print("=" * 60)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    print("提示: 按 Ctrl+C 停止服务器")
+    print("=" * 60)
+    app.run(debug=True, host='127.0.0.1', port=5000)
 
