@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube视频下载器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 48px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .video-info {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .video-info.active {
+            display: block;
+        }
+
+        .video-info img {
+            width: 100%;
+            max-width: 320px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .video-info h3 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .video-info p {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .progress-container {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .downloads-section {
+            margin-top: 40px;
+        }
+
+        .downloads-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .downloads-header h2 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .refresh-btn {
+            background: #f0f0f0;
+            color: #333;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .file-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            background: #f0f0f0;
+            transform: translateX(5px);
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .file-meta {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-download {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-download:hover {
+            background: #5568d3;
+        }
+
+        .btn-delete {
+            background: #ff4757;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #ee3542;
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.active {
+            display: block;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 32px;
+            }
+
+            .card {
+                padding: 25px;
+            }
+
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .file-actions {
+                width: 100%;
+                margin-top: 15px;
+            }
+
+            .btn-small {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>YouTube视频下载器</h1>
+            <p>简单、快速、优雅的视频下载体验</p>
+        </div>
+
+        <div class="card">
+            <div id="message" class="message"></div>
+
+            <div class="input-group">
+                <label for="url">YouTube视频链接</label>
+                <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=..." />
+            </div>
+
+            <div class="input-group">
+                <label for="quality">视频质量</label>
+                <select id="quality">
+                    <option value="best">最佳质量</option>
+                    <option value="1080p">1080p</option>
+                    <option value="720p">720p</option>
+                    <option value="worst">最低质量</option>
+                </select>
+            </div>
+
+            <button class="btn" id="getInfoBtn">获取视频信息</button>
+            <button class="btn" id="downloadBtn" style="display: none;">开始下载</button>
+
+            <div id="videoInfo" class="video-info">
+                <img id="thumbnail" src="" alt="视频缩略图" />
+                <h3 id="videoTitle"></h3>
+                <p id="videoUploader"></p>
+                <p id="videoDuration"></p>
+                <p id="videoViews"></p>
+            </div>
+
+            <div id="progressContainer" class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">准备下载...</div>
+            </div>
+        </div>
+
+        <div class="card downloads-section">
+            <div class="downloads-header">
+                <h2>已下载文件</h2>
+                <button class="refresh-btn" id="refreshBtn">刷新</button>
+            </div>
+            <div id="fileList" class="file-list">
+                <p style="text-align: center; color: #999; padding: 40px;">加载中...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTaskId = null;
+        let statusCheckInterval = null;
+
+        // 获取视频信息
+        document.getElementById('getInfoBtn').addEventListener('click', async () => {
+            const url = document.getElementById('url').value.trim();
+            if (!url) {
+                showMessage('请输入YouTube视频链接', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('getInfoBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>获取中...';
+
+            try {
+                const response = await fetch('/api/info', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('videoTitle').textContent = data.title;
+                    document.getElementById('videoUploader').textContent = `上传者: ${data.uploader}`;
+                    document.getElementById('videoDuration').textContent = `时长: ${formatDuration(data.duration)}`;
+                    document.getElementById('videoViews').textContent = `观看次数: ${formatNumber(data.view_count)}`;
+                    document.getElementById('thumbnail').src = data.thumbnail;
+                    document.getElementById('videoInfo').classList.add('active');
+                    document.getElementById('downloadBtn').style.display = 'block';
+                    showMessage('视频信息获取成功', 'success');
+                } else {
+                    showMessage('获取视频信息失败: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('网络错误: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '获取视频信息';
+            }
+        });
+
+        // 开始下载
+        document.getElementById('downloadBtn').addEventListener('click', async () => {
+            const url = document.getElementById('url').value.trim();
+            const quality = document.getElementById('quality').value;
+
+            if (!url) {
+                showMessage('请输入YouTube视频链接', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('downloadBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>开始下载...';
+
+            try {
+                const response = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url, quality })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentTaskId = data.task_id;
+                    document.getElementById('progressContainer').classList.add('active');
+                    document.getElementById('getInfoBtn').disabled = true;
+                    startStatusCheck();
+                    showMessage('下载已开始', 'success');
+                } else {
+                    showMessage('开始下载失败: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('网络错误: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '开始下载';
+            }
+        });
+
+        // 检查下载状态
+        function startStatusCheck() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+            }
+
+            statusCheckInterval = setInterval(async () => {
+                if (!currentTaskId) return;
+
+                try {
+                    const response = await fetch(`/api/status/${currentTaskId}`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        const task = data.task;
+                        updateProgress(task);
+
+                        if (task.status === 'completed') {
+                            clearInterval(statusCheckInterval);
+                            showMessage('下载完成！', 'success');
+                            document.getElementById('downloadBtn').disabled = true;
+                            document.getElementById('getInfoBtn').disabled = false;
+                            loadDownloads();
+                        } else if (task.status === 'error') {
+                            clearInterval(statusCheckInterval);
+                            showMessage('下载失败: ' + task.error, 'error');
+                            document.getElementById('downloadBtn').disabled = false;
+                            document.getElementById('getInfoBtn').disabled = false;
+                        }
+                    }
+                } catch (error) {
+                    console.error('检查状态失败:', error);
+                }
+            }, 1000);
+        }
+
+        // 更新进度
+        function updateProgress(task) {
+            const progress = task.progress || 0;
+            document.getElementById('progressFill').style.width = progress + '%';
+            
+            let text = `下载中: ${progress}%`;
+            if (task.speed) {
+                const speedMB = (task.speed / (1024 * 1024)).toFixed(2);
+                text += ` | 速度: ${speedMB} MB/s`;
+            }
+            if (task.eta) {
+                text += ` | 剩余: ${formatDuration(task.eta)}`;
+            }
+            document.getElementById('progressText').textContent = text;
+        }
+
+        // 加载下载列表
+        async function loadDownloads() {
+            try {
+                const response = await fetch('/api/downloads');
+                const data = await response.json();
+
+                if (data.success) {
+                    const fileList = document.getElementById('fileList');
+                    if (data.files.length === 0) {
+                        fileList.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">暂无下载文件</p>';
+                    } else {
+                        fileList.innerHTML = data.files.map(file => `
+                            <div class="file-item">
+                                <div class="file-info">
+                                    <div class="file-name">${escapeHtml(file.name)}</div>
+                                    <div class="file-meta">${file.size_mb} MB | ${file.modified}</div>
+                                </div>
+                                <div class="file-actions">
+                                    <button class="btn-small btn-download" onclick="downloadFile('${file.name}')">下载</button>
+                                    <button class="btn-small btn-delete" onclick="deleteFile('${file.name}')">删除</button>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('加载文件列表失败:', error);
+            }
+        }
+
+        // 下载文件
+        function downloadFile(filename) {
+            window.open(`/api/download/${encodeURIComponent(filename)}`, '_blank');
+        }
+
+        // 删除文件
+        async function deleteFile(filename) {
+            if (!confirm('确定要删除这个文件吗？')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/delete/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('文件已删除', 'success');
+                    loadDownloads();
+                } else {
+                    showMessage('删除失败: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('网络错误: ' + error.message, 'error');
+            }
+        }
+
+        // 刷新列表
+        document.getElementById('refreshBtn').addEventListener('click', loadDownloads);
+
+        // 显示消息
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type} active`;
+            setTimeout(() => {
+                messageEl.classList.remove('active');
+            }, 5000);
+        }
+
+        // 工具函数
+        function formatDuration(seconds) {
+            if (!seconds) return '未知';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            if (hours > 0) {
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function formatNumber(num) {
+            if (!num) return '未知';
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 页面加载时获取文件列表
+        loadDownloads();
+    </script>
+</body>
+</html>
+
