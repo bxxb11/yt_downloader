@@ -4,6 +4,49 @@
 
 **本地网页应用** - 在您的电脑上运行，通过浏览器访问和下载视频。
 
+## 🚀 快速开始
+
+### 1. 克隆仓库
+
+```bash
+git clone https://github.com/bxxb11/yt_downloader.git
+cd yt_downloader
+```
+
+### 2. 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. 启动应用
+
+```bash
+# Windows
+start_server.bat
+
+# macOS/Linux
+chmod +x start_server.sh
+./start_server.sh
+
+# 或直接运行
+python app.py
+```
+
+### 4. 打开浏览器
+
+访问: **http://localhost:5000**
+
+## ✨ 功能特点
+
+- ✅ **网页界面** - 美观的Apple风格界面，无需命令行
+- ✅ **实时进度** - 显示下载进度、速度和剩余时间
+- ✅ **视频预览** - 下载前查看视频信息、缩略图
+- ✅ **文件管理** - 查看、下载、删除已下载的文件
+- ✅ **多质量选择** - 支持best/1080p/720p/worst
+- ✅ **自定义目录** - 可以指定下载到任意目录
+- ✅ **完全本地化** - 所有数据存储在本地，不会上传到云端
+
 ## 🌐 Web应用版本（推荐）
 
 **本地网页界面！** 无需命令行，通过浏览器即可使用。
@@ -31,14 +74,25 @@ python app.py
 
 ## 💻 命令行版本
 
-## 安装
+## 📦 安装
 
-1. 确保已安装Python 3.7或更高版本
+### 快速安装
 
-2. 安装依赖：
 ```bash
+# 1. 克隆仓库
+git clone https://github.com/bxxb11/yt_downloader.git
+cd yt_downloader
+
+# 2. 安装依赖
 pip install -r requirements.txt
+
+# 3. 启动应用
+python app.py
+
+# 4. 打开浏览器访问 http://localhost:5000
 ```
+
+**详细安装说明**: 查看 [INSTALL.md](INSTALL.md)
 
 3. **（推荐）安装ffmpeg** - 用于修复视频播放问题：
    - **Windows**: 
